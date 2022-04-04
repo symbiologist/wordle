@@ -1,0 +1,63 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+### Libraries
+```{r}
+library(tidyverse)
+```
+
+### Data
+Load English words from https://github.com/dwyl/english-words
+```{r eval=FALSE}
+download.file(url = 'https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt',
+              dest = '../../data/dwyl_words.txt')
+```
+
+### Analysis
+```{r}
+words <- read_delim('../../data/dwyl_words.txt', 
+                    delim = '\n',
+                    col_names = F) %>% 
+  pull(X1)
+words %>% head()
+```
+#### Five letter words
+```{r}
+fives <- words[nchar(words) == 5]
+fives %>% head()
+```
+
+#### Remove plurals
+```{r}
+fours <- words[nchar(words) == 4]
+fours %>% head()
+```
+
+
+```{r}
+plurals <- paste0(fours, 's')
+plurals %>% head()
+```
+
+```{r}
+fives_plurals <- intersect(fives, plurals)
+fives_plurals %>% head()
+```
+
+```{r}
+fives_singular <- setdiff(fives, plurals)
+fives_singular %>% head()
+```
+```{r}
+fives_singular %>% length()
+```
+
+```{r}
+fives_singular %>% write.table('../../data/fives_singular.tsv')
+```
+

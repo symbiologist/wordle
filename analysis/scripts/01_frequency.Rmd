@@ -1,0 +1,138 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+### Libraries
+```{r}
+library(tidyverse)
+```
+
+### Data
+Load processed data (five-letter words without plural)
+```{r}
+words <- read.table('../../data/fives_singular.tsv') %>% pull(x)
+words %>% head()
+```
+
+### Analysis
+#### Overall frequency
+```{r}
+frequency_overall <- words %>% str_split(pattern = '') %>% unlist() %>% table() %>% as_tibble() %>% set_names(., c('letter', 'frequency')) %>% 
+  mutate(percent = 100* round(frequency/sum(frequency), 3))
+frequency_overall
+```
+```{r}
+frequency_overall %>% 
+  ggplot(aes(x = letter,
+             y = percent)) + 
+  geom_bar(stat = 'identity')
+```
+### Sort
+```{r}
+frequency_overall %>% 
+  ggplot(aes(x = reorder(letter, -percent),
+             y = percent)) + 
+  geom_bar(stat = 'identity') +
+  labs(x = 'Letter',
+       y = 'Frequency (%)') +
+  theme_bw()
+```
+### Top 10 letters
+```{r}
+top10 <- frequency_overall %>% 
+  top_n(10, percent) %>% 
+  mutate(tier = ifelse(letter %in% .$letter[1:5], 1, 2))
+
+top10
+```
+### Words that only contain these 10 letters
+```{r}
+tier1_letters <- top10 %>% filter(tier == 1) %>% pull(letter)
+tier2_letters <- top10 %>% filter(tier == 2) %>% pull(letter)
+
+count_letters <- function(word, letters) {
+  word_letters <- word %>% str_split('') %>% unlist() %>% unique()
+  total_count <- intersect(word_letters, letters) %>% length()
+  total_count
+}
+
+top10_scoring <- tibble(word = words) %>% 
+  rowwise() %>% 
+  mutate(tier1 = count_letters(word, letters = tier1_letters),
+         tier2 = count_letters(word, letters = tier2_letters))
+                        
+top10_scoring
+```
+```{r}
+top10_scoring %>% 
+  filter(tier1 == 5)
+```
+```{r}
+top10_scoring %>% 
+  filter(tier2 == 5)
+```
+### Frequency per position
+```{r}
+letter_matrix <- words %>% str_split('', simplify = TRUE)
+letter_matrix %>% head()
+```
+
+```{r}
+letter_matrix[,1] %>% table()/nrow(letter_matrix)
+```
+
+```{r}
+position_frequency <- apply(letter_matrix,
+      MARGIN = 2,
+      FUN = function(x) {table(x)/length(x)}) %>% 
+  as.data.frame() %>% 
+  rownames_to_column('letter')
+
+position_frequency
+```
+```{r}
+position_frequency_long <- position_frequency %>% 
+  pivot_longer(cols = -letter,
+               names_to = 'position',
+               values_to = 'frequency') 
+
+position_frequency_long
+```
+
+```{r}
+word_position_table <- function(word) {
+  letters <- word %>% str_split('') %>% unlist()
+  position_table <- tibble(letter = letters,
+                           position = paste0('V', 1:5))
+  position_table
+}
+
+word_position_score <- function(word, position_frequency_table) {
+  word_position_table(word) %>% left_join(position_frequency_table, by = c('letter', 'position')) %>% pull(frequency) %>% sum()
+}
+
+word_position_score('saget', position_frequency_long)
+
+```
+
+```{r}
+top10_scoring_frequency_scoring <- top10_scoring %>% 
+  mutate(unique_letters = n_distinct(unlist(str_split(word, ''))),
+         frequency_score = word_position_score(word, position_frequency_long))
+
+top10_scoring_frequency_scoring %>% head()
+```
+```{r}
+top10_scoring_frequency_scoring %>% filter(unique_letters == 5) %>% arrange(-frequency_score)
+```
+```{r}
+top10_scoring_frequency_scoring %>% filter(tier1 == 5) %>% arrange(-frequency_score)
+```
+```{r}
+top10_scoring_frequency_scoring %>% filter(tier2 == 5) %>% arrange(-frequency_score)
+```
+
