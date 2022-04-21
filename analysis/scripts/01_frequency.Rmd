@@ -139,7 +139,7 @@ top10_scoring_frequency_scoring %>% filter(tier2 == 5) %>% arrange(-frequency_sc
 ### consonants
 ```{r}
 top_consonants <- frequency_overall %>% 
-  filter(!(letter %in% c('a', 'e', 'i', 'o', 'u'))) %>% 
+  filter(!(letter %in% c('a', 'e', 'i', 'o', 'u', 'y'))) %>% 
   arrange(-frequency) %>% 
   head(12) %>% 
   mutate(tier = c(rep(1:3, each = 4)))
@@ -171,9 +171,23 @@ combinations <- crossing(word1 = tier12_shortlist$word,
                          word2 = tier12_shortlist$word) %>% 
   filter(word1 != word2) %>% 
   mutate(combination = paste(word1, word2)) %>% 
+  rowwise() %>% 
   mutate(tier1 = count_letters(combination, letters = tier1_letters),
-         tier2 = count_letters(combination, letters = tier2_letters))
+         tier2 = count_letters(combination, letters = tier2_letters)) %>% 
+  mutate(total = tier1 + tier2)
+```
 
 
+```{r}
+finalists <- combinations %>% mutate(total = tier1 + tier2) %>% filter(total == 8)
+finalists
+```
+
+```{r}
+finalists$word1 %>% unique()
+```
+
+```{r}
+finalists$word2 %>% unique()
 ```
 
